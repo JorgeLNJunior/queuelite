@@ -63,7 +63,7 @@ func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
 		job.ID,
 		job.Status,
 		job.Data,
-		time.Now().Unix(),
+		time.Now().UnixMilli(),
 	); err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 			job.ID,
 			job.Status,
 			job.Data,
-			time.Now().Unix(),
+			time.Now().UnixMilli(),
 		); err != nil {
 			_ = tx.Rollback()
 			return err
