@@ -108,6 +108,35 @@ func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	return nil
 }
 
+func (q *SqlQueue) Dequeue(ctx context.Context) (*Job, error) {
+	job := new(Job)
+
+	row := q.readDB.QueryRowContext(
+		ctx,
+		`SELECT id, status, data, added_at, error_reason from queuelite_job WHERE added_at = 
+		(SELECT MIN(added_at) FROM queuelite_job)`,
+	)
+	if err := row.Scan(
+		&job.ID,
+		&job.Status,
+		&job.Data,
+		&job.AddedAt,
+		&job.ErrorReason,
+	); err != nil {
+		return nil, err
+	}
+
+	if _, err := q.writeDB.ExecContext(
+		ctx,
+		"UPDATE queuelite_job SET status = ?",
+		JobStatusRunning,
+	); err != nil {
+		return nil, err
+	}
+
+	return job, nil
+}
+
 func setupDB(db *sql.DB) error {
 	pragmas := []string{
 		"journal_mode = WAL",

@@ -49,6 +49,27 @@ func TestEnqueue(t *testing.T) {
 	})
 }
 
+func TestDequeue(t *testing.T) {
+	t.Run("should dequeue a job", func(tt *testing.T) {
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		err = queue.Enqueue(context.Background(), job)
+		if err != nil {
+			tt.Error(err)
+		}
+
+		if _, err := queue.Dequeue(context.Background()); err != nil {
+			tt.Error(err)
+		}
+	})
+}
+
 func BenchmarkEnqueue(b *testing.B) {
 	queue, err := queuelite.NewSQLiteQueue(dbDir)
 	if err != nil {
