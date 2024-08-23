@@ -13,6 +13,7 @@ func createTables(ctx context.Context, db *sql.DB) error {
       id TEXT PRIMARY KEY,
       status TEXT NOT NULL,
       data BLOB NOT NULL,
+    	added_at INT NOT NULL,
     	error_reason TEXT
     ) STRICT, WITHOUT ROWID;
     `,

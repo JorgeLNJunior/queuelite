@@ -57,15 +57,15 @@ func NewSQLiteQueue(db string) (*SqlQueue, error) {
 }
 
 func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
-	_, err := q.writeDB.ExecContext(
+	if _, err := q.writeDB.ExecContext(
 		ctx,
-		"INSERT INTO queuelite_job (id, status, data) VALUES (?, ?, ?)",
+		"INSERT INTO queuelite_job (id, status, data, added_at) VALUES (?, ?, ?, ?)",
 		job.ID,
 		job.Status,
 		job.Data,
-	)
-	if err != nil {
-		return nil
+		time.Now().Unix(),
+	); err != nil {
+		return err
 	}
 
 	return nil
@@ -78,14 +78,14 @@ func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	}
 
 	for _, job := range jobs {
-		_, err := tx.ExecContext(
+		if _, err := tx.ExecContext(
 			ctx,
-			"INSERT INTO queuelite_job (id, status, data) VALUES (?, ?, ?)",
+			"INSERT INTO queuelite_job (id, status, data, added_at) VALUES (?, ?, ?, ?)",
 			job.ID,
 			job.Status,
 			job.Data,
-		)
-		if err != nil {
+			time.Now().Unix(),
+		); err != nil {
 			_ = tx.Rollback()
 			return err
 		}
