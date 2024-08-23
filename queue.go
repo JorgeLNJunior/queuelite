@@ -56,6 +56,16 @@ func NewSQLiteQueue(db string) (*SqlQueue, error) {
 	}, nil
 }
 
+func (q *SqlQueue) Close() error {
+	if err := q.writeDB.Close(); err != nil {
+		return err
+	}
+	if err := q.readDB.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
 	if _, err := q.writeDB.ExecContext(
 		ctx,

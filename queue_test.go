@@ -16,6 +16,7 @@ func TestEnqueue(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		defer queue.Close()
 
 		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
 
@@ -30,6 +31,7 @@ func TestEnqueue(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		defer queue.Close()
 
 		var eg errgroup.Group
 		eg.SetLimit(25)
@@ -52,6 +54,7 @@ func BenchmarkEnqueue(b *testing.B) {
 	if err != nil {
 		b.Error(err)
 	}
+	defer queue.Close()
 
 	for range b.N {
 		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
