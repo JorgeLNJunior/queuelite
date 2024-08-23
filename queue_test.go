@@ -2,26 +2,17 @@ package queuelite_test
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/JorgeLNJunior/queuelite"
 	"golang.org/x/sync/errgroup"
-	_ "modernc.org/sqlite"
 )
+
+const dbDir string = "queuelite.db"
 
 func TestEnqueue(t *testing.T) {
 	t.Run("should enqueue a Job", func(tt *testing.T) {
-		db, err := sql.Open("sqlite", "queuelite.db")
-		if err != nil {
-			t.Error(err)
-		}
-		err = db.Ping()
-		if err != nil {
-			t.Error(err)
-		}
-
-		queue, err := queuelite.NewSQLiteQueue(db)
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
 		if err != nil {
 			t.Error(err)
 		}
@@ -35,16 +26,7 @@ func TestEnqueue(t *testing.T) {
 	})
 
 	t.Run("should support concurrent enqueues", func(tt *testing.T) {
-		db, err := sql.Open("sqlite", "queuelite.db")
-		if err != nil {
-			t.Error(err)
-		}
-		err = db.Ping()
-		if err != nil {
-			t.Error(err)
-		}
-
-		queue, err := queuelite.NewSQLiteQueue(db)
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
 		if err != nil {
 			t.Error(err)
 		}
@@ -52,7 +34,7 @@ func TestEnqueue(t *testing.T) {
 		var eg errgroup.Group
 		eg.SetLimit(25)
 
-		for range 100 {
+		for range 500 {
 			eg.Go(func() error {
 				job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
 				return queue.Enqueue(context.Background(), job)
@@ -66,16 +48,7 @@ func TestEnqueue(t *testing.T) {
 }
 
 func BenchmarkEnqueue(b *testing.B) {
-	db, err := sql.Open("sqlite", "queuelite.db")
-	if err != nil {
-		b.Error(err)
-	}
-	err = db.Ping()
-	if err != nil {
-		b.Error(err)
-	}
-
-	queue, err := queuelite.NewSQLiteQueue(db)
+	queue, err := queuelite.NewSQLiteQueue(dbDir)
 	if err != nil {
 		b.Error(err)
 	}

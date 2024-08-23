@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"runtime"
 	"time"
+
+	_ "modernc.org/sqlite"
 )
 
 type SqlQueue struct {
-	db      *sql.DB
 	writeDB *sql.DB
 	readDB  *sql.DB
 }
@@ -18,13 +19,13 @@ func NewSQLiteQueue(db string) (*SqlQueue, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*15)
 	defer cancel()
 
-	writeDB, err := sql.Open("sqlite", db+"")
+	writeDB, err := sql.Open("sqlite", db)
 	if err != nil {
 		return nil, err
 	}
 	writeDB.SetMaxOpenConns(1)
 
-	readDB, err := sql.Open("sqlite", db+"")
+	readDB, err := sql.Open("sqlite", db)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +34,14 @@ func NewSQLiteQueue(db string) (*SqlQueue, error) {
 	if err := writeDB.Ping(); err != nil {
 		return nil, err
 	}
+	if err := setupDB(writeDB); err != nil {
+		return nil, err
+	}
+
 	if err := readDB.Ping(); err != nil {
+		return nil, err
+	}
+	if err := setupDB(readDB); err != nil {
 		return nil, err
 	}
 
@@ -49,7 +57,7 @@ func NewSQLiteQueue(db string) (*SqlQueue, error) {
 }
 
 func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
-	_, err := q.db.ExecContext(
+	_, err := q.writeDB.ExecContext(
 		ctx,
 		"INSERT INTO queuelite_job (id, status, data) VALUES (?, ?, ?)",
 		job.ID,
@@ -64,7 +72,7 @@ func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
 }
 
 func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
-	tx, err := q.db.BeginTx(ctx, nil)
+	tx, err := q.writeDB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -78,13 +86,34 @@ func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 			job.Data,
 		)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			return err
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func setupDB(db *sql.DB) error {
+	pragmas := []string{
+		"journal_mode = WAL",
+		"busy_timeout = 5000",
+		"synchronous = NORMAL",
+		"cache_size = 500000000", // 500MB
+		"foreign_keys = true",
+		"temp_store = memory",
+		"mmap_size = 3000000000",
+	}
+
+	for _, pragma := range pragmas {
+		_, err := db.Exec("PRAGMA " + pragma)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -1,2 +1,4 @@
 queuelite.db
 queuelite.db-journal
+queuelite.db-shm
+queuelite.db-wal
