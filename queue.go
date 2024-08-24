@@ -9,13 +9,13 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type SqlQueue struct {
+type SQLiteQueue struct {
 	writeDB *sql.DB
 	readDB  *sql.DB
 }
 
-// NewSQLiteQueue return an instance of [SqlQueue].
-func NewSQLiteQueue(db string) (*SqlQueue, error) {
+// NewSQLiteQueue return an instance of [SQLiteQueue].
+func NewSQLiteQueue(db string) (*SQLiteQueue, error) {
 	ctx := context.Background()
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*15)
 	defer cancel()
@@ -51,14 +51,14 @@ func NewSQLiteQueue(db string) (*SqlQueue, error) {
 		return nil, err
 	}
 
-	return &SqlQueue{
+	return &SQLiteQueue{
 		writeDB: writeDB,
 		readDB:  readDB,
 	}, nil
 }
 
 // Close closes the queue and it's underhood database.
-func (q *SqlQueue) Close() error {
+func (q *SQLiteQueue) Close() error {
 	if err := q.writeDB.Close(); err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (q *SqlQueue) Close() error {
 }
 
 // Enqueue adds a new job to the queue with [JobStatusPending] status.
-func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
+func (q *SQLiteQueue) Enqueue(ctx context.Context, job Job) error {
 	if _, err := q.writeDB.ExecContext(
 		ctx,
 		"INSERT INTO queuelite_job (id, status, data, added_at) VALUES (?, ?, ?, ?)",
@@ -86,7 +86,7 @@ func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
 
 // BatchEnqueue adds a list of jobs to the queue at once.
 // If inserting a task fails, the previous ones are rolled back and the error is returned.
-func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
+func (q *SQLiteQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	tx, err := q.writeDB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 }
 
 // Dequeue returns the oldest job in the queue and set it's status to [JobStatusRunning].
-func (q *SqlQueue) Dequeue(ctx context.Context) (*Job, error) {
+func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 	job := new(Job)
 
 	row := q.readDB.QueryRowContext(
@@ -144,7 +144,7 @@ func (q *SqlQueue) Dequeue(ctx context.Context) (*Job, error) {
 }
 
 // IsEmpty returns true if the queue has no jobs with the status [JobStatusPending] otherwise returns false.
-func (q *SqlQueue) IsEmpty() (bool, error) {
+func (q *SQLiteQueue) IsEmpty() (bool, error) {
 	var jobsCount int
 
 	row := q.readDB.QueryRow(
