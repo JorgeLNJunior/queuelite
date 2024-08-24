@@ -1,4 +1,4 @@
-<div aligin="center">
+<div align="center">
 
 # QueueLite
 
