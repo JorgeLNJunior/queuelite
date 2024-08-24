@@ -1,0 +1,32 @@
+project_name: QueueLite
+version: 2
+
+builds:
+  - skip: true
+
+release:
+  github:
+    owner: JorgeLNJunior
+    name: queuelite
+  footer: |
+    **Full Changelog**: https://github.com/JorgeLNJunior/queuelite/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^test:"
+      - "^style:"
+      - "^ci:"
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+  groups:
+    - title: 'New Features'
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 10
+    - title: Other work
+      order: 999
