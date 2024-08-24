@@ -201,6 +201,36 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 	return nil
 }
 
+// Count returns how many jobs are in the queue.
+func (q *SQLiteQueue) Count(ctx context.Context) (*JobCount, error) {
+	row := q.readDB.QueryRowContext(
+		ctx,
+		`SELECT COUNT(id) AS total, 
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as pending,
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as running,
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as retry,
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as error
+    from queuelite_job`,
+		JobStatusPending,
+		JobStatusRunning,
+		JobStatusRetry,
+		JobStatusError,
+	)
+
+	count := new(JobCount)
+	if err := row.Scan(
+		&count.Total,
+		&count.Pending,
+		&count.Running,
+		&count.Retry,
+		&count.Error,
+	); err != nil {
+		return nil, err
+	}
+
+	return count, nil
+}
+
 func setupDB(db *sql.DB) error {
 	pragmas := []string{
 		"journal_mode = WAL",

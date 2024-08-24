@@ -184,6 +184,55 @@ func TestRetry(t *testing.T) {
 	})
 }
 
+func TestCount(t *testing.T) {
+	t.Run("should return how many jobs are in the queue", func(tt *testing.T) {
+		os.Remove(dbDir)
+
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+		_, err = queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+
+		job = queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+		if err = queue.Retry(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+
+		job = queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+
+		count, err := queue.Count(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+
+		if count.Total != 3 {
+			tt.Errorf("expected total to be 3 but got %d", count.Total)
+		}
+		if count.Pending != 1 {
+			tt.Errorf("expected pending to be 1 but got %d", count.Pending)
+		}
+		if count.Retry != 1 {
+			tt.Errorf("expected retry to be 1 but got %d", count.Retry)
+		}
+	})
+}
+
 func BenchmarkEnqueue(b *testing.B) {
 	queue, err := queuelite.NewSQLiteQueue(dbDir)
 	if err != nil {

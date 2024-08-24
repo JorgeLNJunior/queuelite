@@ -27,6 +27,14 @@ type Job struct {
 	ErrorReason sql.NullString `json:"error_reason"`
 }
 
+type JobCount struct {
+	Pending int `json:"pending"`
+	Running int `json:"running"`
+	Retry   int `json:"retry"`
+	Error   int `json:"error"`
+	Total   int `json:"total"`
+}
+
 // NewJob returns a [Job] instance.
 func NewJob(data []byte) Job {
 	return Job{
