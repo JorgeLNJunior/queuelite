@@ -119,8 +119,10 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 
 	row := q.readDB.QueryRowContext(
 		ctx,
-		`SELECT id, status, data, added_at, error_reason, retry_count from queuelite_job WHERE added_at = 
-		(SELECT MIN(added_at) FROM queuelite_job)`,
+		`SELECT id, status, data, added_at, error_reason, retry_count from queuelite_job 
+		WHERE added_at = (SELECT MIN(added_at) FROM queuelite_job WHERE status IN (?, ?))`,
+		JobStatusPending,
+		JobStatusRetry,
 	)
 	if err := row.Scan(
 		&job.ID,
