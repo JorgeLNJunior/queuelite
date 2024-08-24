@@ -10,11 +10,11 @@ QueueLite is a simple and performant queue backed by SQLite. Wrote following the
 
 ### Install
 
-´go get github.com/JorgeLNJunior/queuelite´
+`go get github.com/JorgeLNJunior/queuelite`
 
 ### Enqueue
 
-´´´go
+```go
 import "github.com/JorgeLNJunior/queuelite"
 
 queue, err := queuelite.NewSQLiteQueue("queue.db")
@@ -28,18 +28,21 @@ job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
 if err = queue.Enqueue(context.Background(), job); err != nil {
 	return err
 }
-´´´
+```
 
 ### Dequeue
 
-´´´go
+```go
 job, err := queue.Dequeue(context.Background())
-´´´
+if err != nil {
+	return err
+}
+```
 
 ### Retry
 
-´´´go
+```go
 if err := queue.Retry(context.Background(), job); err != nil {
   return err
 }
-´´´
+```
