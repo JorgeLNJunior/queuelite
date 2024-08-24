@@ -137,6 +137,20 @@ func (q *SqlQueue) Dequeue(ctx context.Context) (*Job, error) {
 	return job, nil
 }
 
+func (q *SqlQueue) IsEmpty() (bool, error) {
+	var jobsCount int
+
+	row := q.readDB.QueryRow(
+		"SELECT COUNT() FROM queuelite_job WHERE status = ?",
+		JobStatusPending,
+	)
+	if err := row.Scan(&jobsCount); err != nil {
+		return false, err
+	}
+
+	return jobsCount < 1, nil
+}
+
 func setupDB(db *sql.DB) error {
 	pragmas := []string{
 		"journal_mode = WAL",
