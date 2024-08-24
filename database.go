@@ -15,7 +15,7 @@ func createTables(ctx context.Context, db *sql.DB) error {
       data BLOB NOT NULL,
     	added_at INT NOT NULL,
     	retry_count INT NOT NULL DEFAULT 0,
-    	error_reason TEXT
+    	failure_reason TEXT
     ) STRICT, WITHOUT ROWID;
     `,
 	)

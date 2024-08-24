@@ -119,7 +119,7 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 
 	row := q.readDB.QueryRowContext(
 		ctx,
-		`SELECT id, status, data, added_at, error_reason, retry_count from queuelite_job 
+		`SELECT id, status, data, added_at, error_reason, retry_count from queuelite_job
 		WHERE added_at = (SELECT MIN(added_at) FROM queuelite_job WHERE status IN (?, ?))`,
 		JobStatusPending,
 		JobStatusRetry,
@@ -129,7 +129,7 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 		&job.Status,
 		&job.Data,
 		&job.AddedAt,
-		&job.ErrorReason,
+		&job.FailureReason,
 		&job.RetryCount,
 	); err != nil {
 		return nil, err
@@ -205,16 +205,16 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 func (q *SQLiteQueue) Count(ctx context.Context) (*JobCount, error) {
 	row := q.readDB.QueryRowContext(
 		ctx,
-		`SELECT COUNT(id) AS total, 
+		`SELECT COUNT(id) AS total,
     SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as pending,
     SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as running,
     SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as retry,
-    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as error
+    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as failed
     from queuelite_job`,
 		JobStatusPending,
 		JobStatusRunning,
 		JobStatusRetry,
-		JobStatusError,
+		JobStatusFailed,
 	)
 
 	count := new(JobCount)
@@ -223,7 +223,7 @@ func (q *SQLiteQueue) Count(ctx context.Context) (*JobCount, error) {
 		&count.Pending,
 		&count.Running,
 		&count.Retry,
-		&count.Error,
+		&count.Failed,
 	); err != nil {
 		return nil, err
 	}
