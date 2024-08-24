@@ -71,7 +71,7 @@ func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
 		ctx,
 		"INSERT INTO queuelite_job (id, status, data, added_at) VALUES (?, ?, ?, ?)",
 		job.ID,
-		job.Status,
+		JobStatusPending,
 		job.Data,
 		time.Now().UnixMilli(),
 	); err != nil {
@@ -92,7 +92,7 @@ func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 			ctx,
 			"INSERT INTO queuelite_job (id, status, data, added_at) VALUES (?, ?, ?, ?)",
 			job.ID,
-			job.Status,
+			JobStatusPending,
 			job.Data,
 			time.Now().UnixMilli(),
 		); err != nil {
