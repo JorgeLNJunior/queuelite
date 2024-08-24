@@ -91,6 +91,7 @@ func (q *SQLiteQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback() //nolint:errcheck
 
 	for _, job := range jobs {
 		if _, err := tx.ExecContext(
@@ -101,7 +102,6 @@ func (q *SQLiteQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 			job.Data,
 			time.Now().UnixMilli(),
 		); err != nil {
-			_ = tx.Rollback()
 			return err
 		}
 	}
@@ -119,7 +119,7 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 
 	row := q.readDB.QueryRowContext(
 		ctx,
-		`SELECT id, status, data, added_at, error_reason from queuelite_job WHERE added_at = 
+		`SELECT id, status, data, added_at, error_reason, retry_count from queuelite_job WHERE added_at = 
 		(SELECT MIN(added_at) FROM queuelite_job)`,
 	)
 	if err := row.Scan(
@@ -128,6 +128,7 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 		&job.Data,
 		&job.AddedAt,
 		&job.ErrorReason,
+		&job.RetryCount,
 	); err != nil {
 		return nil, err
 	}
@@ -156,6 +157,45 @@ func (q *SQLiteQueue) IsEmpty() (bool, error) {
 	}
 
 	return (jobsCount < 1), nil
+}
+
+// Retry re-adds a [Job] in the queue with [JobStatusRetry].
+// If the job is not in the queue returns [JobNotFoundErr].
+func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
+	row := q.readDB.QueryRowContext(
+		ctx,
+		"SELECT EXISTS(SELECT id FROM queuelite_job WHERE id = ?)",
+		job.ID,
+	)
+
+	var jobExists bool
+	if err := row.Scan(&jobExists); err != nil {
+		return err
+	}
+	if !jobExists {
+		return JobNotFoundErr
+	}
+
+	tx, err := q.writeDB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.ExecContext(
+		ctx,
+		"UPDATE queuelite_job SET status = ?, retry_count = (retry_count + 1) WHERE id = ?",
+		JobStatusRetry,
+		job.ID,
+	); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func setupDB(db *sql.DB) error {

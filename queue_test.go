@@ -2,6 +2,7 @@ package queuelite_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
@@ -60,8 +61,7 @@ func TestDequeue(t *testing.T) {
 
 		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
 
-		err = queue.Enqueue(context.Background(), job)
-		if err != nil {
+		if err = queue.Enqueue(context.Background(), job); err != nil {
 			tt.Error(err)
 		}
 
@@ -99,8 +99,7 @@ func TestIsEmpty(t *testing.T) {
 
 		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
 
-		err = queue.Enqueue(context.Background(), job)
-		if err != nil {
+		if err = queue.Enqueue(context.Background(), job); err != nil {
 			tt.Error(err)
 		}
 
@@ -110,6 +109,77 @@ func TestIsEmpty(t *testing.T) {
 		}
 		if isEmpty {
 			t.Error("expected 'false' but received 'true'")
+		}
+	})
+}
+
+func TestRetry(t *testing.T) {
+	t.Run("should re-add a job in the queue with [JobStatusRetry] status", func(tt *testing.T) {
+		os.Remove(dbDir)
+
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+
+		if err = queue.Retry(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+	})
+
+	t.Run("should increase the retry count of the job", func(tt *testing.T) {
+		os.Remove(dbDir)
+
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+
+		if err = queue.Retry(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+
+		result, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+		if result.ID != job.ID {
+			tt.Errorf("expected job '%s' but received '%s'", job.ID, result.ID)
+		}
+		if result.RetryCount != 1 {
+			tt.Errorf("expect retry count to be 1 but received %d", result.RetryCount)
+		}
+	})
+
+	t.Run("should return [JobNotFoundErr] if a job is not in the queue", func(tt *testing.T) {
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		err = queue.Retry(context.Background(), job)
+		if err == nil {
+			tt.Error("expected an error but got nil")
+		}
+		if !errors.Is(err, queuelite.JobNotFoundErr) {
+			tt.Errorf("expected an [JobNotFoundErr] but got '%s'", err.Error())
 		}
 	})
 }

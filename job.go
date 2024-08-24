@@ -2,6 +2,7 @@ package queuelite
 
 import (
 	"database/sql"
+	"errors"
 )
 
 // JobStatus represents the status of a job in the queue.
@@ -10,8 +11,11 @@ type JobStatus string
 const (
 	JobStatusPending JobStatus = "pending"
 	JobStatusRunning JobStatus = "running"
+	JobStatusRetry   JobStatus = "retry"
 	JobStatusError   JobStatus = "error"
 )
+
+var JobNotFoundErr = errors.New("job not found in the queue")
 
 // Job represents a job in the queue.
 type Job struct {
@@ -19,6 +23,7 @@ type Job struct {
 	Status      JobStatus      `json:"status"`
 	Data        []byte         `json:"data"`
 	AddedAt     int64          `json:"added_at"`
+	RetryCount  int            `json:"retry_count"`
 	ErrorReason sql.NullString `json:"error_reason"`
 }
 
