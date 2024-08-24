@@ -147,10 +147,11 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 }
 
 // IsEmpty returns true if the queue has no jobs with the status [JobStatusPending] otherwise returns false.
-func (q *SQLiteQueue) IsEmpty() (bool, error) {
+func (q *SQLiteQueue) IsEmpty(ctx context.Context) (bool, error) {
 	var jobsCount int
 
-	row := q.readDB.QueryRow(
+	row := q.readDB.QueryRowContext(
+		ctx,
 		"SELECT COUNT() FROM queuelite_job WHERE status = ?",
 		JobStatusPending,
 	)

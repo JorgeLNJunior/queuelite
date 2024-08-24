@@ -81,7 +81,7 @@ func TestIsEmpty(t *testing.T) {
 		}
 		defer queue.Close()
 
-		isEmpty, err := queue.IsEmpty()
+		isEmpty, err := queue.IsEmpty(context.Background())
 		if err != nil {
 			t.Error(err)
 		}
@@ -103,7 +103,7 @@ func TestIsEmpty(t *testing.T) {
 			tt.Error(err)
 		}
 
-		isEmpty, err := queue.IsEmpty()
+		isEmpty, err := queue.IsEmpty(context.Background())
 		if err != nil {
 			t.Error(err)
 		}
