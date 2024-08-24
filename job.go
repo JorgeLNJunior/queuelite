@@ -4,6 +4,7 @@ import (
 	"database/sql"
 )
 
+// JobStatus represents the status of a job in the queue.
 type JobStatus string
 
 const (
@@ -12,6 +13,7 @@ const (
 	JobStatusError   JobStatus = "error"
 )
 
+// Job represents a job in the queue.
 type Job struct {
 	ID          string         `json:"id"`
 	Status      JobStatus      `json:"status"`
@@ -20,6 +22,7 @@ type Job struct {
 	ErrorReason sql.NullString `json:"error_reason"`
 }
 
+// NewJob returns a [Job] instance.
 func NewJob(data []byte) Job {
 	return Job{
 		ID:     newRandomID(),

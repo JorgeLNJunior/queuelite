@@ -14,6 +14,7 @@ type SqlQueue struct {
 	readDB  *sql.DB
 }
 
+// NewSQLiteQueue return an instance of [SqlQueue].
 func NewSQLiteQueue(db string) (*SqlQueue, error) {
 	ctx := context.Background()
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*15)
@@ -56,6 +57,7 @@ func NewSQLiteQueue(db string) (*SqlQueue, error) {
 	}, nil
 }
 
+// Close closes the queue and it's underhood database.
 func (q *SqlQueue) Close() error {
 	if err := q.writeDB.Close(); err != nil {
 		return err
@@ -66,6 +68,7 @@ func (q *SqlQueue) Close() error {
 	return nil
 }
 
+// Enqueue adds a new job to the queue with [JobStatusPending] status.
 func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
 	if _, err := q.writeDB.ExecContext(
 		ctx,
@@ -81,6 +84,8 @@ func (q *SqlQueue) Enqueue(ctx context.Context, job Job) error {
 	return nil
 }
 
+// BatchEnqueue adds a list of jobs to the queue at once.
+// If inserting a task fails, the previous ones are rolled back and the error is returned.
 func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	tx, err := q.writeDB.BeginTx(ctx, nil)
 	if err != nil {
@@ -108,6 +113,7 @@ func (q *SqlQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	return nil
 }
 
+// Dequeue returns the oldest job in the queue and set it's status to [JobStatusRunning].
 func (q *SqlQueue) Dequeue(ctx context.Context) (*Job, error) {
 	job := new(Job)
 
@@ -137,6 +143,7 @@ func (q *SqlQueue) Dequeue(ctx context.Context) (*Job, error) {
 	return job, nil
 }
 
+// IsEmpty returns true if the queue has no jobs with the status [JobStatusPending] otherwise returns false.
 func (q *SqlQueue) IsEmpty() (bool, error) {
 	var jobsCount int
 
@@ -148,7 +155,7 @@ func (q *SqlQueue) IsEmpty() (bool, error) {
 		return false, err
 	}
 
-	return jobsCount < 1, nil
+	return (jobsCount < 1), nil
 }
 
 func setupDB(db *sql.DB) error {
