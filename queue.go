@@ -201,6 +201,44 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 	return nil
 }
 
+// Fail sets a job in [JobStatusFailed] status. Returns [JobNotFoundErr] if the job is not in the queue.
+func (q *SQLiteQueue) Fail(ctx context.Context, job Job) error {
+	row := q.readDB.QueryRowContext(
+		ctx,
+		"SELECT EXISTS(SELECT id FROM queuelite_job WHERE id = ?)",
+		job.ID,
+	)
+
+	var jobExists bool
+	if err := row.Scan(&jobExists); err != nil {
+		return err
+	}
+	if !jobExists {
+		return JobNotFoundErr
+	}
+
+	tx, err := q.writeDB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.ExecContext(
+		ctx,
+		"UPDATE queuelite_job SET status = ? WHERE id = ?",
+		JobStatusFailed,
+		job.ID,
+	); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Count returns how many jobs are in the queue.
 func (q *SQLiteQueue) Count(ctx context.Context) (*JobCount, error) {
 	row := q.readDB.QueryRowContext(
