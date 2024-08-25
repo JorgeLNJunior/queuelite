@@ -60,7 +60,7 @@ if err := queue.Retry(context.Background(), job); err != nil {
 ### Fail
 
 ```go
-if err := queue.Fail(context.Background(), job); err != nil {
+if err := queue.Fail(context.Background(), job, "reason"); err != nil {
   return err
 }
 ```

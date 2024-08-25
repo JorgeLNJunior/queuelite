@@ -241,7 +241,7 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 }
 
 // Fail sets a job in [JobStateFailed] state. Returns [JobNotFoundErr] if the job is not in the queue.
-func (q *SQLiteQueue) Fail(ctx context.Context, job Job) error {
+func (q *SQLiteQueue) Fail(ctx context.Context, job Job, reason string) error {
 	row := q.readDB.QueryRowContext(
 		ctx,
 		"SELECT EXISTS(SELECT id FROM queuelite_job WHERE id = ?)",
@@ -264,8 +264,9 @@ func (q *SQLiteQueue) Fail(ctx context.Context, job Job) error {
 
 	if _, err := tx.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET state = ? WHERE id = ?",
+		"UPDATE queuelite_job SET state = ?, failure_reason = ? WHERE id = ?",
 		JobStateFailed,
+		reason,
 		job.ID,
 	); err != nil {
 		return err
