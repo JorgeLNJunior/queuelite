@@ -153,8 +153,9 @@ func (q *SQLiteQueue) IsEmpty(ctx context.Context) (bool, error) {
 
 	row := q.readDB.QueryRowContext(
 		ctx,
-		"SELECT COUNT() FROM queuelite_job WHERE state = ?",
+		"SELECT COUNT() FROM queuelite_job WHERE state IN (?, ?)",
 		JobStatePending,
+		JobStateRetry,
 	)
 	if err := row.Scan(&jobsCount); err != nil {
 		return false, err
