@@ -11,7 +11,7 @@ func createTables(ctx context.Context, db *sql.DB) error {
 		`
     CREATE TABLE IF NOT EXISTS queuelite_job (
       id TEXT PRIMARY KEY,
-      status TEXT NOT NULL,
+      state TEXT NOT NULL,
       data BLOB NOT NULL,
     	added_at INT NOT NULL,
     	retry_count INT NOT NULL DEFAULT 0,

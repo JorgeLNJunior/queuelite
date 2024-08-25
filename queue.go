@@ -68,13 +68,13 @@ func (q *SQLiteQueue) Close() error {
 	return nil
 }
 
-// Enqueue adds a new job to the queue with [JobStatusPending] status.
+// Enqueue adds a new job to the queue with [JobStatePending] state.
 func (q *SQLiteQueue) Enqueue(ctx context.Context, job Job) error {
 	if _, err := q.writeDB.ExecContext(
 		ctx,
-		"INSERT INTO queuelite_job (id, status, data, added_at) VALUES (?, ?, ?, ?)",
+		"INSERT INTO queuelite_job (id, state, data, added_at) VALUES (?, ?, ?, ?)",
 		job.ID,
-		JobStatusPending,
+		JobStatePending,
 		job.Data,
 		time.Now().UnixMilli(),
 	); err != nil {
@@ -96,9 +96,9 @@ func (q *SQLiteQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	for _, job := range jobs {
 		if _, err := tx.ExecContext(
 			ctx,
-			"INSERT INTO queuelite_job (id, status, data, added_at) VALUES (?, ?, ?, ?)",
+			"INSERT INTO queuelite_job (id, state, data, added_at) VALUES (?, ?, ?, ?)",
 			job.ID,
-			JobStatusPending,
+			JobStatePending,
 			job.Data,
 			time.Now().UnixMilli(),
 		); err != nil {
@@ -113,20 +113,20 @@ func (q *SQLiteQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	return nil
 }
 
-// Dequeue returns the oldest job in the queue and set it's status to [JobStatusRunning].
+// Dequeue returns the oldest job in the queue and set it's state to [JobStateRunning].
 func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 	job := new(Job)
 
 	row := q.readDB.QueryRowContext(
 		ctx,
-		`SELECT id, status, data, added_at, failure_reason, retry_count from queuelite_job
-		WHERE added_at = (SELECT MIN(added_at) FROM queuelite_job WHERE status IN (?, ?))`,
-		JobStatusPending,
-		JobStatusRetry,
+		`SELECT id, state, data, added_at, failure_reason, retry_count from queuelite_job
+		WHERE added_at = (SELECT MIN(added_at) FROM queuelite_job WHERE state IN (?, ?))`,
+		JobStatePending,
+		JobStateRetry,
 	)
 	if err := row.Scan(
 		&job.ID,
-		&job.Status,
+		&job.State,
 		&job.Data,
 		&job.AddedAt,
 		&job.FailureReason,
@@ -137,8 +137,8 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 
 	if _, err := q.writeDB.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET status = ?",
-		JobStatusRunning,
+		"UPDATE queuelite_job SET state = ?",
+		JobStateRunning,
 	); err != nil {
 		return nil, err
 	}
@@ -146,14 +146,14 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 	return job, nil
 }
 
-// IsEmpty returns true if the queue has no jobs with the status [JobStatusPending] otherwise returns false.
+// IsEmpty returns true if the queue has no jobs with the state [JobStatePending] otherwise returns false.
 func (q *SQLiteQueue) IsEmpty(ctx context.Context) (bool, error) {
 	var jobsCount int
 
 	row := q.readDB.QueryRowContext(
 		ctx,
-		"SELECT COUNT() FROM queuelite_job WHERE status = ?",
-		JobStatusPending,
+		"SELECT COUNT() FROM queuelite_job WHERE state = ?",
+		JobStatePending,
 	)
 	if err := row.Scan(&jobsCount); err != nil {
 		return false, err
@@ -162,7 +162,7 @@ func (q *SQLiteQueue) IsEmpty(ctx context.Context) (bool, error) {
 	return (jobsCount < 1), nil
 }
 
-// Retry re-adds a [Job] in the queue with [JobStatusRetry].
+// Retry re-adds a [Job] in the queue with [JobStateRetry].
 // If the job is not in the queue returns [JobNotFoundErr].
 func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 	row := q.readDB.QueryRowContext(
@@ -187,8 +187,8 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 
 	if _, err := tx.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET status = ?, retry_count = (retry_count + 1) WHERE id = ?",
-		JobStatusRetry,
+		"UPDATE queuelite_job SET state = ?, retry_count = (retry_count + 1) WHERE id = ?",
+		JobStateRetry,
 		job.ID,
 	); err != nil {
 		return err
@@ -201,7 +201,7 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 	return nil
 }
 
-// Fail sets a job in [JobStatusFailed] status. Returns [JobNotFoundErr] if the job is not in the queue.
+// Fail sets a job in [JobStateFailed] state. Returns [JobNotFoundErr] if the job is not in the queue.
 func (q *SQLiteQueue) Fail(ctx context.Context, job Job) error {
 	row := q.readDB.QueryRowContext(
 		ctx,
@@ -225,8 +225,8 @@ func (q *SQLiteQueue) Fail(ctx context.Context, job Job) error {
 
 	if _, err := tx.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET status = ? WHERE id = ?",
-		JobStatusFailed,
+		"UPDATE queuelite_job SET state = ? WHERE id = ?",
+		JobStateFailed,
 		job.ID,
 	); err != nil {
 		return err
@@ -244,15 +244,15 @@ func (q *SQLiteQueue) Count(ctx context.Context) (*JobCount, error) {
 	row := q.readDB.QueryRowContext(
 		ctx,
 		`SELECT COUNT(id) AS total,
-    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as pending,
-    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as running,
-    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as retry,
-    SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as failed
+    SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as pending,
+    SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as running,
+    SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as retry,
+    SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as failed
     from queuelite_job`,
-		JobStatusPending,
-		JobStatusRunning,
-		JobStatusRetry,
-		JobStatusFailed,
+		JobStatePending,
+		JobStateRunning,
+		JobStateRetry,
+		JobStateFailed,
 	)
 
 	count := new(JobCount)

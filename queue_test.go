@@ -114,7 +114,7 @@ func TestIsEmpty(t *testing.T) {
 }
 
 func TestRetry(t *testing.T) {
-	t.Run("should re-add a job in the queue with [JobStatusRetry] status", func(tt *testing.T) {
+	t.Run("should re-add a job in the queue with [JobStateRetry] state", func(tt *testing.T) {
 		os.Remove(dbDir)
 
 		queue, err := queuelite.NewSQLiteQueue(dbDir)
@@ -234,7 +234,7 @@ func TestCount(t *testing.T) {
 }
 
 func TestFail(t *testing.T) {
-	t.Run("should set the state of a task to [JobStatusFailed]", func(tt *testing.T) {
+	t.Run("should set the state of a task to [JobStateFailed]", func(tt *testing.T) {
 		os.Remove(dbDir)
 
 		queue, err := queuelite.NewSQLiteQueue(dbDir)
