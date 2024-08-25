@@ -9,10 +9,11 @@ import (
 type JobState string
 
 const (
-	JobStatePending JobState = "pending"
-	JobStateRunning JobState = "running"
-	JobStateRetry   JobState = "retry"
-	JobStateFailed  JobState = "failed"
+	JobStatePending   JobState = "pending"
+	JobStateRunning   JobState = "running"
+	JobStateRetry     JobState = "retry"
+	JobStateFailed    JobState = "failed"
+	JobStateCompleted JobState = "completed"
 )
 
 var JobNotFoundErr = errors.New("job not found in the queue")
@@ -28,11 +29,12 @@ type Job struct {
 }
 
 type JobCount struct {
-	Pending int `json:"pending"`
-	Running int `json:"running"`
-	Retry   int `json:"retry"`
-	Failed  int `json:"failed"`
-	Total   int `json:"total"`
+	Pending   int `json:"pending"`
+	Running   int `json:"running"`
+	Retry     int `json:"retry"`
+	Failed    int `json:"failed"`
+	Completed int `json:"completed"`
+	Total     int `json:"total"`
 }
 
 // NewJob returns a [Job] instance.

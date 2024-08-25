@@ -162,7 +162,46 @@ func (q *SQLiteQueue) IsEmpty(ctx context.Context) (bool, error) {
 	return (jobsCount < 1), nil
 }
 
-// Retry re-adds a [Job] in the queue with [JobStateRetry].
+// Complete sets a [Job] in the queue with [JobStateCompleted] state.
+// If the job is not in the queue returns [JobNotFoundErr].
+func (q *SQLiteQueue) Complete(ctx context.Context, job Job) error {
+	row := q.readDB.QueryRowContext(
+		ctx,
+		"SELECT EXISTS(SELECT id FROM queuelite_job WHERE id = ?)",
+		job.ID,
+	)
+
+	var jobExists bool
+	if err := row.Scan(&jobExists); err != nil {
+		return err
+	}
+	if !jobExists {
+		return JobNotFoundErr
+	}
+
+	tx, err := q.writeDB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.ExecContext(
+		ctx,
+		"UPDATE queuelite_job SET state = ? WHERE id = ?",
+		JobStateCompleted,
+		job.ID,
+	); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Retry re-adds a [Job] in the queue with [JobStateRetry] state.
 // If the job is not in the queue returns [JobNotFoundErr].
 func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 	row := q.readDB.QueryRowContext(
@@ -247,12 +286,14 @@ func (q *SQLiteQueue) Count(ctx context.Context) (*JobCount, error) {
     SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as pending,
     SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as running,
     SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as retry,
-    SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as failed
+    SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as failed,
+    SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as completed
     from queuelite_job`,
 		JobStatePending,
 		JobStateRunning,
 		JobStateRetry,
 		JobStateFailed,
+		JobStateCompleted,
 	)
 
 	count := new(JobCount)
@@ -262,6 +303,7 @@ func (q *SQLiteQueue) Count(ctx context.Context) (*JobCount, error) {
 		&count.Running,
 		&count.Retry,
 		&count.Failed,
+		&count.Completed,
 	); err != nil {
 		return nil, err
 	}

@@ -233,6 +233,54 @@ func TestCount(t *testing.T) {
 	})
 }
 
+func TestComplete(t *testing.T) {
+	t.Run("should set the state of a task to [JobStateCompleted]", func(tt *testing.T) {
+		os.Remove(dbDir)
+
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+
+		if err = queue.Complete(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+
+		count, err := queue.Count(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+		if count.Completed != 1 {
+			tt.Errorf("expected 'completed' to be 1 but got %d", count.Completed)
+		}
+	})
+
+	t.Run("should return [JobNotFoundErr] if a job is not in the queue", func(tt *testing.T) {
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		err = queue.Complete(context.Background(), job)
+		if err == nil {
+			tt.Error("expected an error but got nil")
+		}
+		if !errors.Is(err, queuelite.JobNotFoundErr) {
+			tt.Errorf("expected an [JobNotFoundErr] but got '%s'", err.Error())
+		}
+	})
+}
+
 func TestFail(t *testing.T) {
 	t.Run("should set the state of a task to [JobStateFailed]", func(tt *testing.T) {
 		os.Remove(dbDir)
