@@ -137,8 +137,9 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 
 	if _, err := q.writeDB.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET state = ?",
+		"UPDATE queuelite_job SET state = ? WHERE id = ?",
 		JobStateRunning,
+		job.ID,
 	); err != nil {
 		return nil, err
 	}
