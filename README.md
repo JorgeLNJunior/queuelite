@@ -2,7 +2,7 @@
 
 # QueueLite
 
-QueueLite is a simple and performant queue backed by SQLite. Wrote following the [guide](https://kerkour.com/sqlite-for-servers) made by Silvain Kerkour.
+QueueLite is a simple queue backed by SQLite. Wrote following the [guide](https://kerkour.com/sqlite-for-servers) made by Silvain Kerkour.
 
 </div>
 
@@ -43,6 +43,14 @@ if err != nil {
 
 ```go
 if err := queue.Retry(context.Background(), job); err != nil {
+  return err
+}
+```
+
+### Fail
+
+```go
+if err := queue.Fail(context.Background(), job); err != nil {
   return err
 }
 ```
