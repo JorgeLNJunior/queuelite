@@ -353,6 +353,47 @@ func (q *SQLiteQueue) ListPending(ctx context.Context, opts ...ListOption) ([]Jo
 	return jobs, nil
 }
 
+// ListRunning returns a list of [Job] with the [JobStateRunning] state.
+func (q *SQLiteQueue) ListRunning(ctx context.Context, opts ...ListOption) ([]Job, error) {
+	options := listOptions{
+		limit: 20,
+	}
+	for _, o := range opts {
+		o.apply(&options)
+	}
+
+	rows, err := q.readDB.QueryContext(
+		ctx,
+		`SELECT rowid, state, data, added_at, failure_reason, retry_count from queuelite_job
+		WHERE state = ? LIMIT ?`,
+		JobStateRunning,
+		options.limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	jobs := make([]Job, 0)
+
+	for rows.Next() {
+		job := Job{}
+		if err = rows.Scan(
+			&job.ID,
+			&job.State,
+			&job.Data,
+			&job.AddedAt,
+			&job.FailureReason,
+			&job.RetryCount,
+		); err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, job)
+	}
+
+	return jobs, nil
+}
+
 func setupDB(db *sql.DB) error {
 	pragmas := []string{
 		"journal_mode = WAL",

@@ -378,6 +378,37 @@ func TestListPending(t *testing.T) {
 	})
 }
 
+func TestListRunning(t *testing.T) {
+	t.Run("should return a list of running jobs", func(tt *testing.T) {
+		os.Remove(dbDir)
+
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+		if _, err = queue.Dequeue(context.Background()); err != nil {
+			tt.Error(err)
+		}
+
+		pending, err := queue.ListRunning(context.Background(), queuelite.WithLimit(5))
+		if err != nil {
+			tt.Error(err)
+		}
+		count := len(pending)
+
+		if count < 1 {
+			tt.Errorf("expected running jobs count to be 1 but received %d", count)
+		}
+	})
+}
+
 func BenchmarkEnqueue(b *testing.B) {
 	os.Remove(dbDir)
 
