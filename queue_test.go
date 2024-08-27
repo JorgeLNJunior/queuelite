@@ -444,6 +444,41 @@ func TestListRetry(t *testing.T) {
 	})
 }
 
+func TestListFailed(t *testing.T) {
+	t.Run("should return a list of failed jobs", func(tt *testing.T) {
+		os.Remove(dbDir)
+
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+		j, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+		if err = queue.Fail(context.Background(), *j, "error"); err != nil {
+			tt.Error(err)
+		}
+
+		failed, err := queue.ListFailed(context.Background(), queuelite.WithLimit(5))
+		if err != nil {
+			tt.Error(err)
+		}
+		count := len(failed)
+
+		if count < 1 {
+			tt.Errorf("expected failed jobs count to be 1 but received %d", count)
+		}
+	})
+}
+
 func BenchmarkEnqueue(b *testing.B) {
 	os.Remove(dbDir)
 
