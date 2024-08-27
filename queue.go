@@ -72,11 +72,10 @@ func (q *SQLiteQueue) Close() error {
 func (q *SQLiteQueue) Enqueue(ctx context.Context, job Job) error {
 	if _, err := q.writeDB.ExecContext(
 		ctx,
-		"INSERT INTO queuelite_job (id, state, data, added_at) VALUES (?, ?, ?, ?)",
-		job.ID,
+		"INSERT INTO queuelite_job (state, data, added_at) VALUES (?, ?, ?)",
 		JobStatePending,
 		job.Data,
-		time.Now().UnixMilli(),
+		time.Now().Unix(),
 	); err != nil {
 		return err
 	}
@@ -96,11 +95,10 @@ func (q *SQLiteQueue) BatchEnqueue(ctx context.Context, jobs []Job) error {
 	for _, job := range jobs {
 		if _, err := tx.ExecContext(
 			ctx,
-			"INSERT INTO queuelite_job (id, state, data, added_at) VALUES (?, ?, ?, ?)",
-			job.ID,
+			"INSERT INTO queuelite_job (state, data, added_at) VALUES (?, ?, ?)",
 			JobStatePending,
 			job.Data,
-			time.Now().UnixMilli(),
+			time.Now().Unix(),
 		); err != nil {
 			return err
 		}
@@ -119,8 +117,8 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 
 	row := q.readDB.QueryRowContext(
 		ctx,
-		`SELECT id, state, data, added_at, failure_reason, retry_count from queuelite_job
-		WHERE added_at = (SELECT MIN(added_at) FROM queuelite_job WHERE state IN (?, ?))`,
+		`SELECT rowid, state, data, added_at, failure_reason, retry_count from queuelite_job
+		WHERE rowid = (SELECT MIN(rowid) FROM queuelite_job WHERE state IN (?, ?))`,
 		JobStatePending,
 		JobStateRetry,
 	)
@@ -137,7 +135,7 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 
 	if _, err := q.writeDB.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET state = ? WHERE id = ?",
+		"UPDATE queuelite_job SET state = ? WHERE rowid = ?",
 		JobStateRunning,
 		job.ID,
 	); err != nil {
@@ -169,7 +167,7 @@ func (q *SQLiteQueue) IsEmpty(ctx context.Context) (bool, error) {
 func (q *SQLiteQueue) Complete(ctx context.Context, job Job) error {
 	row := q.readDB.QueryRowContext(
 		ctx,
-		"SELECT EXISTS(SELECT id FROM queuelite_job WHERE id = ?)",
+		"SELECT EXISTS(SELECT rowid FROM queuelite_job WHERE rowid = ?)",
 		job.ID,
 	)
 
@@ -189,7 +187,7 @@ func (q *SQLiteQueue) Complete(ctx context.Context, job Job) error {
 
 	if _, err := tx.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET state = ? WHERE id = ?",
+		"UPDATE queuelite_job SET state = ? WHERE rowid = ?",
 		JobStateCompleted,
 		job.ID,
 	); err != nil {
@@ -208,7 +206,7 @@ func (q *SQLiteQueue) Complete(ctx context.Context, job Job) error {
 func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 	row := q.readDB.QueryRowContext(
 		ctx,
-		"SELECT EXISTS(SELECT id FROM queuelite_job WHERE id = ?)",
+		"SELECT EXISTS(SELECT rowid FROM queuelite_job WHERE rowid = ?)",
 		job.ID,
 	)
 
@@ -228,7 +226,7 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 
 	if _, err := tx.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET state = ?, retry_count = (retry_count + 1) WHERE id = ?",
+		"UPDATE queuelite_job SET state = ?, retry_count = (retry_count + 1) WHERE rowid = ?",
 		JobStateRetry,
 		job.ID,
 	); err != nil {
@@ -246,7 +244,7 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 func (q *SQLiteQueue) Fail(ctx context.Context, job Job, reason string) error {
 	row := q.readDB.QueryRowContext(
 		ctx,
-		"SELECT EXISTS(SELECT id FROM queuelite_job WHERE id = ?)",
+		"SELECT EXISTS(SELECT rowid FROM queuelite_job WHERE rowid = ?)",
 		job.ID,
 	)
 
@@ -266,7 +264,7 @@ func (q *SQLiteQueue) Fail(ctx context.Context, job Job, reason string) error {
 
 	if _, err := tx.ExecContext(
 		ctx,
-		"UPDATE queuelite_job SET state = ?, failure_reason = ? WHERE id = ?",
+		"UPDATE queuelite_job SET state = ?, failure_reason = ? WHERE rowid = ?",
 		JobStateFailed,
 		reason,
 		job.ID,
@@ -285,7 +283,7 @@ func (q *SQLiteQueue) Fail(ctx context.Context, job Job, reason string) error {
 func (q *SQLiteQueue) Count(ctx context.Context) (*JobCount, error) {
 	row := q.readDB.QueryRowContext(
 		ctx,
-		`SELECT COUNT(id) AS total,
+		`SELECT COUNT(rowid) AS total,
     SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as pending,
     SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as running,
     SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as retry,

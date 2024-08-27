@@ -129,7 +129,12 @@ func TestRetry(t *testing.T) {
 			tt.Error(err)
 		}
 
-		if err = queue.Retry(context.Background(), job); err != nil {
+		j, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+
+		if err = queue.Retry(context.Background(), *j); err != nil {
 			tt.Error(err)
 		}
 	})
@@ -149,16 +154,18 @@ func TestRetry(t *testing.T) {
 			tt.Error(err)
 		}
 
-		if err = queue.Retry(context.Background(), job); err != nil {
+		j, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+
+		if err = queue.Retry(context.Background(), *j); err != nil {
 			tt.Error(err)
 		}
 
 		result, err := queue.Dequeue(context.Background())
 		if err != nil {
 			tt.Error(err)
-		}
-		if result.ID != job.ID {
-			tt.Errorf("expected job '%s' but received '%s'", job.ID, result.ID)
 		}
 		if result.RetryCount != 1 {
 			tt.Errorf("expect retry count to be 1 but received %d", result.RetryCount)
@@ -207,7 +214,11 @@ func TestCount(t *testing.T) {
 		if err = queue.Enqueue(context.Background(), job); err != nil {
 			tt.Error(err)
 		}
-		if err = queue.Retry(context.Background(), job); err != nil {
+		j, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+		if err = queue.Retry(context.Background(), *j); err != nil {
 			tt.Error(err)
 		}
 
@@ -249,7 +260,12 @@ func TestComplete(t *testing.T) {
 			tt.Error(err)
 		}
 
-		if err = queue.Complete(context.Background(), job); err != nil {
+		j, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+
+		if err = queue.Complete(context.Background(), *j); err != nil {
 			tt.Error(err)
 		}
 
@@ -297,7 +313,12 @@ func TestFail(t *testing.T) {
 			tt.Error(err)
 		}
 
-		if err = queue.Fail(context.Background(), job, "a test"); err != nil {
+		j, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+
+		if err = queue.Fail(context.Background(), *j, "a test"); err != nil {
 			tt.Error(err)
 		}
 
@@ -330,6 +351,8 @@ func TestFail(t *testing.T) {
 }
 
 func BenchmarkEnqueue(b *testing.B) {
+	os.Remove(dbDir)
+
 	queue, err := queuelite.NewSQLiteQueue(dbDir)
 	if err != nil {
 		b.Error(err)
@@ -341,6 +364,29 @@ func BenchmarkEnqueue(b *testing.B) {
 
 		err = queue.Enqueue(context.Background(), job)
 		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkDequeue(b *testing.B) {
+	os.Remove(dbDir)
+
+	queue, err := queuelite.NewSQLiteQueue(dbDir)
+	if err != nil {
+		b.Error(err)
+	}
+	defer queue.Close()
+
+	for range b.N {
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		err = queue.Enqueue(context.Background(), job)
+		if err != nil {
+			b.Error(err)
+		}
+
+		if _, err = queue.Dequeue(context.Background()); err != nil {
 			b.Error(err)
 		}
 	}

@@ -20,7 +20,7 @@ var JobNotFoundErr = errors.New("job not found in the queue")
 
 // Job represents a job in the queue.
 type Job struct {
-	ID            string         `json:"id"`
+	ID            int64          `json:"id"`
 	State         JobState       `json:"state"`
 	Data          []byte         `json:"data"`
 	AddedAt       int64          `json:"added_at"`
@@ -40,7 +40,6 @@ type JobCount struct {
 // NewJob returns a [Job] instance.
 func NewJob(data []byte) Job {
 	return Job{
-		ID:    newRandomID(),
 		Data:  data,
 		State: JobStatePending,
 	}
