@@ -397,14 +397,49 @@ func TestListRunning(t *testing.T) {
 			tt.Error(err)
 		}
 
-		pending, err := queue.ListRunning(context.Background(), queuelite.WithLimit(5))
+		running, err := queue.ListRunning(context.Background(), queuelite.WithLimit(5))
 		if err != nil {
 			tt.Error(err)
 		}
-		count := len(pending)
+		count := len(running)
 
 		if count < 1 {
 			tt.Errorf("expected running jobs count to be 1 but received %d", count)
+		}
+	})
+}
+
+func TestListRetry(t *testing.T) {
+	t.Run("should return a list of retry jobs", func(tt *testing.T) {
+		os.Remove(dbDir)
+
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+		j, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+		if err = queue.Retry(context.Background(), *j); err != nil {
+			tt.Error(err)
+		}
+
+		retry, err := queue.ListRetry(context.Background(), queuelite.WithLimit(5))
+		if err != nil {
+			tt.Error(err)
+		}
+		count := len(retry)
+
+		if count < 1 {
+			tt.Errorf("expected retry jobs count to be 1 but received %d", count)
 		}
 	})
 }
