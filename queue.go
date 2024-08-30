@@ -503,7 +503,21 @@ func (q *SQLiteQueue) GetJob(ctx context.Context, id int64) (*Job, error) {
 	return job, nil
 }
 
-func (q *SQLiteQueue) RemoveJob(id int64) error {
+// RemoveJob removes a job from the queue. If the job is not in the queue return [JobNotFoundErr].
+func (q *SQLiteQueue) RemoveJob(ctx context.Context, id int64) error {
+	_, err := q.GetJob(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if _, err = q.writeDB.ExecContext(
+		ctx,
+		"DELETE FROM queuelite_job WHERE rowid = ?",
+		id,
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 

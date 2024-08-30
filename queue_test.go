@@ -519,6 +519,44 @@ func TestGetJob(t *testing.T) {
 	})
 }
 
+func TestRemoveJob(t *testing.T) {
+	t.Run("should remove a job", func(tt *testing.T) {
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		if err = queue.Enqueue(context.Background(), job); err != nil {
+			tt.Error(err)
+		}
+		j, err := queue.Dequeue(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+
+		if err = queue.RemoveJob(context.Background(), j.ID); err != nil {
+			tt.Error(err)
+		}
+	})
+
+	t.Run("should return JobNotFoundErr if a job is not in the queue", func(tt *testing.T) {
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
+
+		if err = queue.RemoveJob(context.Background(), job.ID); !errors.Is(err, queuelite.JobNotFoundErr) {
+			tt.Error(err)
+		}
+	})
+}
+
 func BenchmarkEnqueue(b *testing.B) {
 	os.Remove(dbDir)
 
