@@ -3,6 +3,7 @@ package queuelite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"runtime"
 	"time"
 
@@ -164,11 +165,11 @@ func (q *SQLiteQueue) IsEmpty(ctx context.Context) (bool, error) {
 
 // Complete sets a [Job] in the queue with [JobStateCompleted] state.
 // If the job is not in the queue returns [JobNotFoundErr].
-func (q *SQLiteQueue) Complete(ctx context.Context, job Job) error {
+func (q *SQLiteQueue) Complete(ctx context.Context, jobID int64) error {
 	row := q.readDB.QueryRowContext(
 		ctx,
 		"SELECT EXISTS(SELECT rowid FROM queuelite_job WHERE rowid = ?)",
-		job.ID,
+		jobID,
 	)
 
 	var jobExists bool
@@ -189,7 +190,7 @@ func (q *SQLiteQueue) Complete(ctx context.Context, job Job) error {
 		ctx,
 		"UPDATE queuelite_job SET state = ? WHERE rowid = ?",
 		JobStateCompleted,
-		job.ID,
+		jobID,
 	); err != nil {
 		return err
 	}
@@ -203,11 +204,11 @@ func (q *SQLiteQueue) Complete(ctx context.Context, job Job) error {
 
 // Retry re-adds a [Job] in the queue with [JobStateRetry] state.
 // If the job is not in the queue returns [JobNotFoundErr].
-func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
+func (q *SQLiteQueue) Retry(ctx context.Context, jobID int64) error {
 	row := q.readDB.QueryRowContext(
 		ctx,
 		"SELECT EXISTS(SELECT rowid FROM queuelite_job WHERE rowid = ?)",
-		job.ID,
+		jobID,
 	)
 
 	var jobExists bool
@@ -228,7 +229,7 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 		ctx,
 		"UPDATE queuelite_job SET state = ?, retry_count = (retry_count + 1) WHERE rowid = ?",
 		JobStateRetry,
-		job.ID,
+		jobID,
 	); err != nil {
 		return err
 	}
@@ -241,11 +242,11 @@ func (q *SQLiteQueue) Retry(ctx context.Context, job Job) error {
 }
 
 // Fail sets a job in [JobStateFailed] state. Returns [JobNotFoundErr] if the job is not in the queue.
-func (q *SQLiteQueue) Fail(ctx context.Context, job Job, reason string) error {
+func (q *SQLiteQueue) Fail(ctx context.Context, jobID int64, reason string) error {
 	row := q.readDB.QueryRowContext(
 		ctx,
 		"SELECT EXISTS(SELECT rowid FROM queuelite_job WHERE rowid = ?)",
-		job.ID,
+		jobID,
 	)
 
 	var jobExists bool
@@ -267,7 +268,7 @@ func (q *SQLiteQueue) Fail(ctx context.Context, job Job, reason string) error {
 		"UPDATE queuelite_job SET state = ?, failure_reason = ? WHERE rowid = ?",
 		JobStateFailed,
 		reason,
-		job.ID,
+		jobID,
 	); err != nil {
 		return err
 	}

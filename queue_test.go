@@ -134,7 +134,7 @@ func TestRetry(t *testing.T) {
 			tt.Error(err)
 		}
 
-		if err = queue.Retry(context.Background(), *j); err != nil {
+		if err = queue.Retry(context.Background(), j.ID); err != nil {
 			tt.Error(err)
 		}
 	})
@@ -159,7 +159,7 @@ func TestRetry(t *testing.T) {
 			tt.Error(err)
 		}
 
-		if err = queue.Retry(context.Background(), *j); err != nil {
+		if err = queue.Retry(context.Background(), j.ID); err != nil {
 			tt.Error(err)
 		}
 
@@ -181,7 +181,7 @@ func TestRetry(t *testing.T) {
 
 		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
 
-		err = queue.Retry(context.Background(), job)
+		err = queue.Retry(context.Background(), job.ID)
 		if err == nil {
 			tt.Error("expected an error but got nil")
 		}
@@ -218,7 +218,7 @@ func TestCount(t *testing.T) {
 		if err != nil {
 			tt.Error(err)
 		}
-		if err = queue.Retry(context.Background(), *j); err != nil {
+		if err = queue.Retry(context.Background(), j.ID); err != nil {
 			tt.Error(err)
 		}
 
@@ -265,7 +265,7 @@ func TestComplete(t *testing.T) {
 			tt.Error(err)
 		}
 
-		if err = queue.Complete(context.Background(), *j); err != nil {
+		if err = queue.Complete(context.Background(), j.ID); err != nil {
 			tt.Error(err)
 		}
 
@@ -287,7 +287,7 @@ func TestComplete(t *testing.T) {
 
 		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
 
-		err = queue.Complete(context.Background(), job)
+		err = queue.Complete(context.Background(), job.ID)
 		if err == nil {
 			tt.Error("expected an error but got nil")
 		}
@@ -318,7 +318,7 @@ func TestFail(t *testing.T) {
 			tt.Error(err)
 		}
 
-		if err = queue.Fail(context.Background(), *j, "a test"); err != nil {
+		if err = queue.Fail(context.Background(), j.ID, "a test"); err != nil {
 			tt.Error(err)
 		}
 
@@ -340,7 +340,7 @@ func TestFail(t *testing.T) {
 
 		job := queuelite.NewJob([]byte("{ \"key\": \"value\" }"))
 
-		err = queue.Fail(context.Background(), job, "a test")
+		err = queue.Fail(context.Background(), job.ID, "a test")
 		if err == nil {
 			tt.Error("expected an error but got nil")
 		}
@@ -428,7 +428,7 @@ func TestListRetry(t *testing.T) {
 		if err != nil {
 			tt.Error(err)
 		}
-		if err = queue.Retry(context.Background(), *j); err != nil {
+		if err = queue.Retry(context.Background(), j.ID); err != nil {
 			tt.Error(err)
 		}
 
@@ -463,7 +463,7 @@ func TestListFailed(t *testing.T) {
 		if err != nil {
 			tt.Error(err)
 		}
-		if err = queue.Fail(context.Background(), *j, "error"); err != nil {
+		if err = queue.Fail(context.Background(), j.ID, "error"); err != nil {
 			tt.Error(err)
 		}
 
