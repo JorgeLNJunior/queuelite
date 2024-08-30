@@ -60,6 +60,24 @@ func NewSQLiteQueue(db string) (*SQLiteQueue, error) {
 
 // Close closes the queue and it's underhood database.
 func (q *SQLiteQueue) Close() error {
+	ctx := context.Background()
+
+	runningJobs, err := q.ListRunning(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, job := range runningJobs {
+		if _, err := q.readDB.ExecContext(
+			ctx,
+			"UPDATE queuelite_job SET state = ? WHERE rowid = ?",
+			JobStatePending,
+			job.ID,
+		); err != nil {
+			return err
+		}
+	}
+
 	if err := q.writeDB.Close(); err != nil {
 		return err
 	}
