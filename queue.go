@@ -477,6 +477,7 @@ func (q *SQLiteQueue) ListFailed(ctx context.Context, opts ...ListOption) ([]Job
 	return jobs, nil
 }
 
+// GetJob returns a job by its id. If the job is not in the queue returns [JobNotFoundErr].
 func (q *SQLiteQueue) GetJob(ctx context.Context, id int64) (*Job, error) {
 	job := new(Job)
 
@@ -500,6 +501,10 @@ func (q *SQLiteQueue) GetJob(ctx context.Context, id int64) (*Job, error) {
 	}
 
 	return job, nil
+}
+
+func (q *SQLiteQueue) RemoveJob(id int64) error {
+	return nil
 }
 
 func setupDB(db *sql.DB) error {
