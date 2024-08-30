@@ -117,7 +117,7 @@ func (q *SQLiteQueue) Dequeue(ctx context.Context) (*Job, error) {
 
 	row := q.readDB.QueryRowContext(
 		ctx,
-		`SELECT rowid, state, data, added_at, failure_reason, retry_count from queuelite_job
+		`SELECT rowid, state, data, added_at, failure_reason, retry_count FROM queuelite_job
 		WHERE rowid = (SELECT MIN(rowid) FROM queuelite_job WHERE state IN (?, ?))`,
 		JobStatePending,
 		JobStateRetry,
@@ -474,6 +474,31 @@ func (q *SQLiteQueue) ListFailed(ctx context.Context, opts ...ListOption) ([]Job
 	}
 
 	return jobs, nil
+}
+
+func (q *SQLiteQueue) GetJob(ctx context.Context, id int64) (*Job, error) {
+	job := new(Job)
+
+	row := q.readDB.QueryRowContext(
+		ctx,
+		"SELECT rowid, state, data, added_at, failure_reason, retry_count FROM queuelite_job WHERE rowid = ?",
+		id,
+	)
+	if err := row.Scan(
+		&job.ID,
+		&job.State,
+		&job.Data,
+		&job.AddedAt,
+		&job.FailureReason,
+		&job.RetryCount,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, JobNotFoundErr
+		}
+		return nil, err
+	}
+
+	return job, nil
 }
 
 func setupDB(db *sql.DB) error {
