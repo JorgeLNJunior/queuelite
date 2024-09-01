@@ -91,6 +91,8 @@ func TestIsEmpty(t *testing.T) {
 	})
 
 	t.Run("should return false if the queue is not empty", func(tt *testing.T) {
+		os.Remove(dbDir)
+
 		queue, err := queuelite.NewSQLiteQueue(dbDir)
 		if err != nil {
 			t.Error(err)
@@ -240,6 +242,25 @@ func TestCount(t *testing.T) {
 		}
 		if count.Retry != 1 {
 			tt.Errorf("expected retry to be 1 but got %d", count.Retry)
+		}
+	})
+
+	t.Run("should return an empty struct if there is no jobs in the queue", func(tt *testing.T) {
+		os.Remove(dbDir)
+
+		queue, err := queuelite.NewSQLiteQueue(dbDir)
+		if err != nil {
+			t.Error(err)
+		}
+		defer queue.Close()
+
+		count, err := queue.Count(context.Background())
+		if err != nil {
+			tt.Error(err)
+		}
+
+		if count.Total != 0 {
+			tt.Errorf("expected total to be 0 but got %d", count.Total)
 		}
 	})
 }
