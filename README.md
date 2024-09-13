@@ -44,7 +44,7 @@ if err != nil {
 ### Complete
 
 ```go
-if err := queue.Complete(context.Background(), job); err != nil {
+if err := queue.Complete(context.Background(), job.ID); err != nil {
   return err
 }
 ```
@@ -52,7 +52,7 @@ if err := queue.Complete(context.Background(), job); err != nil {
 ### Retry
 
 ```go
-if err := queue.Retry(context.Background(), job); err != nil {
+if err := queue.Retry(context.Background(), job.ID); err != nil {
   return err
 }
 ```
@@ -60,7 +60,7 @@ if err := queue.Retry(context.Background(), job); err != nil {
 ### Fail
 
 ```go
-if err := queue.Fail(context.Background(), job, "reason"); err != nil {
+if err := queue.Fail(context.Background(), job.ID, "reason"); err != nil {
   return err
 }
 ```
