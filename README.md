@@ -2,7 +2,7 @@
 
 # QueueLite
 
-QueueLite is a simple and persistent queue backed by SQLite. Wrote following the [guide](https://kerkour.com/sqlite-for-servers) made by Silvain Kerkour.
+QueueLite is a simple and persistent queue backed by SQLite. Wrote following the [guide](https://kerkour.com/sqlite-for-servers) made by Sylvain Kerkour.
 
 </div>
 
